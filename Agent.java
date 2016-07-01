@@ -108,6 +108,8 @@ public class Agent {
     		transformationMap.put("EF", generateTransformation(figEMatrix, figFMatrix));
     		transformationMap.put("GH", generateTransformation(figGMatrix, figHMatrix));
     		
+    		transformationMap.put("AE", generateTransformation(figAMatrix, figEMatrix));
+    		
     		transformationMap.put("AD", generateTransformation(figAMatrix, figDMatrix));
     		transformationMap.put("BE", generateTransformation(figBMatrix, figEMatrix));
     		transformationMap.put("CF", generateTransformation(figCMatrix, figFMatrix));
@@ -117,7 +119,12 @@ public class Agent {
     		System.out.println(transformationMap);
     		
     		potentialAnswers.addAll(applyAndTestTransformations(problemType, transformationMap, figFMatrix, figHMatrix, figEMatrix, answersMap));
-    		System.out.println(potentialAnswers);
+    		System.out.println("Potentials: " +potentialAnswers);
+    		
+    		if (potentialAnswers.size() > 1) {
+    			
+    		}
+    		
     	}
     	
     	else {
@@ -432,12 +439,41 @@ public class Agent {
     		String cXTransform = generateTransformation(figCMatrix, ansMatrix);
     		System.out.println("{aX:"+aXTransform+", bX:"+bXTransform+", cX: "+cXTransform+"}");
     		
+    		
     		Map<String,Double> transformResultsMap = new HashMap<String, Double>(); 
     		
+    		List ABCTransformList = new ArrayList<String>();
+    		ABCTransformList.add(transformationMap.get("AB"));
+    		ABCTransformList.add(transformationMap.get("BC"));
+    		
+    		List DEFTransformList = new ArrayList<String>();
+    		DEFTransformList.add(transformationMap.get("DE"));
+    		DEFTransformList.add(transformationMap.get("EF"));
+    		
+    		List GHITransformList = new ArrayList<String>();
+    		GHITransformList.add(transformationMap.get("GH"));
+    		GHITransformList.add(bXTransform);
+    		
+    		List ADGTransformList = new ArrayList<String>();
+    		ADGTransformList.add(transformationMap.get("AD"));
+    		ADGTransformList.add(transformationMap.get("DG"));
+    		
+    		List BEHTransformList = new ArrayList<String>();
+    		BEHTransformList.add(transformationMap.get("BE"));
+    		BEHTransformList.add(transformationMap.get("EH"));
+    		
+    		List CFITransformList = new ArrayList<String>();
+    		CFITransformList.add(transformationMap.get("CF"));
+    		CFITransformList.add(aXTransform);
+    		
+    		List AEITransformList = new ArrayList<String>();
+    		AEITransformList.add(transformationMap.get("AE"));
+    		AEITransformList.add(cXTransform);
+    		
+    		
     		if (type.equals("3x3")) {
-    			transformResultsMap.put("aXTransform", testTransformation(transformationMap.get("AD"), transformationMap.get("DG"), transformationMap.get("BE"), transformationMap.get("EH"), transformationMap.get("CF"), aXTransform));
-        		transformResultsMap.put("bXTransform", testTransformation(transformationMap.get("BC"), transformationMap.get("EF"), bXTransform));
-        		//transformResultsMap.put("cXTransform", testTransformation(cXTransform, transformationMap.get("EG")));
+    			transformResultsMap.put("aXTransform", testTransformation(ADGTransformList, BEHTransformList, CFITransformList));
+        		transformResultsMap.put("bXTransform", testTransformation(ABCTransformList, DEFTransformList, GHITransformList));
     		} else {
     			transformResultsMap.put("aXTransform", testTransformation(aXTransform, transformationMap.get("BC")));
     			transformResultsMap.put("bXTransform", testTransformation(bXTransform, transformationMap.get("AC")));
@@ -451,29 +487,51 @@ public class Agent {
 	}
     
     
-    private Double testTransformation(String testTransform1, String testTransform2, String targetTransform) {
-    	Double confidenceLevel1 = 0.0;
-    	Double confidenceLevel2 = 0.0;
+    
+	private Double testTransformation(List<String> list1,
+			List<String> list2, List<String> list3) {
+		
+    	Double confidenceLevel = 0.0;
     	
-    	if (isDouble(testTransform1) && isDouble(testTransform2)) {
-    		confidenceLevel1 = (1 - Math.abs(Double.parseDouble(testTransform1) - Double.parseDouble(testTransform2))) * 100;
-    	} else {		
-    		if (testTransform1.equalsIgnoreCase(testTransform2)) {  //Direct match..
-    			confidenceLevel1 = 100.0;
-    		}
+    	if (list1.get(0).equals(list2.get(0)) && 
+    			list2.get(0).equals(list3.get(0)) && 
+    			list1.get(1).equals(list2.get(1)) &&
+    			list2.get(1).equals(list3.get(1))) {
+    		confidenceLevel = 100.0;
+    	} else if (areAllDouble(list1,list2,list3)) {
+    		Double matchPctgDelta1 = Double.parseDouble(list1.get(0)) - Double.parseDouble(list1.get(1));
+    		Double matchPctgDelta2 = Double.parseDouble(list2.get(0)) - Double.parseDouble(list2.get(1));
+    		Double matchPctgDelta3 = Double.parseDouble(list3.get(0)) - Double.parseDouble(list3.get(1));
+    		
+    		Double std_deviation = getStandardDeviation(matchPctgDelta1, matchPctgDelta2, matchPctgDelta3);
+    		confidenceLevel = 100.0 - std_deviation;
     	}
     	
-    	if (isDouble(testTransform2) && isDouble(targetTransform)) {
-    		confidenceLevel2 = (1 - Math.abs(Double.parseDouble(testTransform2) - Double.parseDouble(targetTransform))) * 100;
-    	} else {		
-    		if (testTransform2.equalsIgnoreCase(targetTransform)) {  //Direct match..
-    			confidenceLevel2 = 100.0;
-    		}
-    	}
-    	
-    	
-    	return (confidenceLevel1 + confidenceLevel2)/2.0;			//Average..
+    	return confidenceLevel;
 	}
+	private Double getStandardDeviation(Double matchPctgDelta1,
+			Double matchPctgDelta2, Double matchPctgDelta3) {
+	
+		Double mean =  (matchPctgDelta1+matchPctgDelta2+matchPctgDelta3)/3.0;
+		
+		Double variance = ( Math.pow((matchPctgDelta1-mean), 2) +
+							Math.pow((matchPctgDelta2-mean), 2) + 
+							Math.pow((matchPctgDelta3-mean), 2) ) / 3.0;
+		
+		return Math.sqrt(variance);
+		
+	}
+	private boolean areAllDouble(List<String> list1, List<String> list2,
+			List<String> list3) {
+		if (isDouble(list1.get(0)) && isDouble(list1.get(1)) &&
+				isDouble(list2.get(0)) && isDouble(list2.get(1)) &&
+				isDouble(list3.get(0)) && isDouble(list3.get(1))) {
+			return true;
+		} 
+		return false;
+	}
+	
+
 	private Set<String> getPotentialAnswers(String type, Map<String,Map<String, Double>> testResultsMap) { 
     	Set<String> potentialAnswers = new HashSet<String>();
     	List<String> transforms = new ArrayList<String>();
@@ -482,16 +540,18 @@ public class Agent {
     	if (type.equals("2x2")) {
     		transforms.add("cXTransform");
     	}
-    	Map<String,Set<String>> potentialAnswerMap = new HashMap<String,Set<String>>();
+    	Map<String,String> potentialAnswerMap = new HashMap<String,String>();
     	/* For each transform, create a potential answermap */
     	for (String eachTransform : transforms) {
     		Double confLevel = 0.0;
-    		Set<String> answer = new HashSet<String>();
+    		//Set<String> answer = new HashSet<String>();
+    		String answer = null;
     		for (String key: testResultsMap.keySet()) {
     			Map<String,Double> map = testResultsMap.get(key);
     			if (map.get(eachTransform) > 95.0 && map.get(eachTransform) >= confLevel) {
+    				//answer.add(key);
+    				answer = key;
     				confLevel = map.get(eachTransform);
-    				answer.add(key);
     			}
     		}
     		if (answer != null) {
@@ -503,14 +563,13 @@ public class Agent {
     	Map<String, Integer> answerVotesMap = new HashMap<String,Integer>();
     	int count;
     	for (String key : potentialAnswerMap.keySet()) { 
-    		for (String eachAns : potentialAnswerMap.get(key)) {
+    			String eachAns = potentialAnswerMap.get(key);
     			if (answerVotesMap.containsKey(eachAns)) {
     				count = answerVotesMap.get(eachAns)+1;
     			} else {
     				count = 1;
     			}
     			answerVotesMap.put(eachAns, count);
-    		}
     	}
     	System.out.println("ansvotesmap: "+answerVotesMap);
     	
