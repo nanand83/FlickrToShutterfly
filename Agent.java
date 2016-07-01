@@ -62,6 +62,9 @@ public class Agent {
     	RavensFigure figB = problem.getFigures().get("B");
     	RavensFigure figC = problem.getFigures().get("C");
     	
+    	
+    	
+    	
     	Map<String, RavensFigure> answersMap = new HashMap<String, RavensFigure>();
     	int options = 0;
     	String problemType = problem.getProblemType();
@@ -74,42 +77,81 @@ public class Agent {
 			String ans = String.valueOf(i);
 			answersMap.put(ans, problem.getFigures().get(ans));
 		}
+
+    	Set<String> potentialAnswers = new HashSet<String>(); 
+    	
     	
     	
     	//2x2 solving..
     	int[][] figAMatrix = getBinaryArray(figA.getVisual());
     	int[][] figBMatrix = getBinaryArray(figB.getVisual());
     	int[][] figCMatrix = getBinaryArray(figC.getVisual());
-
-    	int[][] ABtransformMatrix = matrixSubtract(figAMatrix, figBMatrix);
     	
-    	
-    	Set<String> potentialAnswers = testSubtract(ABtransformMatrix, figCMatrix, answersMap);
-    	
-    	if (potentialAnswers.size() == 0) {
-    		//Store transforms, generate and test..
+    	if (problemType.equals("3x3")) {
+    		RavensFigure figD = problem.getFigures().get("D");
+    		RavensFigure figE = problem.getFigures().get("E");
+    		RavensFigure figF = problem.getFigures().get("F");
+    		RavensFigure figG = problem.getFigures().get("G");
+    		RavensFigure figH = problem.getFigures().get("H");
+    		
+    		
+    		int[][] figDMatrix = getBinaryArray(figD.getVisual());
+    		int[][] figEMatrix = getBinaryArray(figE.getVisual());
+    		int[][] figFMatrix = getBinaryArray(figF.getVisual());
+    		int[][] figGMatrix = getBinaryArray(figG.getVisual());
+    		int[][] figHMatrix = getBinaryArray(figH.getVisual());
     		
     		Map<String,String> transformationMap = new HashMap<String,String>();
     		transformationMap.put("AB", generateTransformation(figAMatrix, figBMatrix));
     		transformationMap.put("BC", generateTransformation(figBMatrix, figCMatrix));
-    		transformationMap.put("AC", generateTransformation(figAMatrix, figCMatrix));
+    		transformationMap.put("DE", generateTransformation(figDMatrix, figEMatrix));
+    		transformationMap.put("EF", generateTransformation(figEMatrix, figFMatrix));
+    		transformationMap.put("GH", generateTransformation(figGMatrix, figHMatrix));
+    		
+    		transformationMap.put("AD", generateTransformation(figAMatrix, figDMatrix));
+    		transformationMap.put("BE", generateTransformation(figBMatrix, figEMatrix));
+    		transformationMap.put("CF", generateTransformation(figCMatrix, figFMatrix));
+    		transformationMap.put("DG", generateTransformation(figDMatrix, figGMatrix));
+    		transformationMap.put("EH", generateTransformation(figEMatrix, figHMatrix));
+    		
     		System.out.println(transformationMap);
-    		potentialAnswers.addAll(applyAndTestTransformations(problemType, transformationMap, figAMatrix, figBMatrix, figCMatrix, answersMap));
+    		
+    		potentialAnswers.addAll(applyAndTestTransformations(problemType, transformationMap, figFMatrix, figHMatrix, figEMatrix, answersMap));
     		System.out.println(potentialAnswers);
     	}
-    	if (potentialAnswers.size()>1) {	//Try another set of generation..
-    		potentialAnswers.clear();
-    		Map<String,String> transformationMap = new HashMap<String,String>();
-    		transformationMap.put("AB", generateTransformation(figBMatrix, figAMatrix));
-    		transformationMap.put("BC", generateTransformation(figBMatrix, figCMatrix));
-    		transformationMap.put("AC", generateTransformation(figCMatrix, figAMatrix));
-    		System.out.println(transformationMap);
-    		potentialAnswers.addAll(applyAndTestTransformations(problemType, transformationMap, figAMatrix, figBMatrix, figCMatrix, answersMap));
+    	
+    	else {
+	    	int[][] ABtransformMatrix = matrixSubtract(figAMatrix, figBMatrix);
+	    	
+	    			
+	    	if (potentialAnswers.size() == 0) {
+	    		//Store transforms, generate and test..
+	    		
+	    		Map<String,String> transformationMap = new HashMap<String,String>();
+	    		transformationMap.put("AB", generateTransformation(figAMatrix, figBMatrix));
+	    		transformationMap.put("BC", generateTransformation(figBMatrix, figCMatrix));
+	    		transformationMap.put("AC", generateTransformation(figAMatrix, figCMatrix));
+	    		System.out.println(transformationMap);
+	    		potentialAnswers.addAll(applyAndTestTransformations(problemType, transformationMap, figAMatrix, figBMatrix, figCMatrix, answersMap));
+	    		System.out.println(potentialAnswers);
+	    	}
+	    	/*if (potentialAnswers.size()>1) {	//Try another set of generation..
+	    		potentialAnswers.clear();
+	    		Map<String,String> transformationMap = new HashMap<String,String>();
+	    		transformationMap.put("AB", generateTransformation(figBMatrix, figAMatrix));
+	    		transformationMap.put("BC", generateTransformation(figBMatrix, figCMatrix));
+	    		transformationMap.put("AC", generateTransformation(figCMatrix, figAMatrix));
+	    		System.out.println("Trans-2"+transformationMap);
+	    		potentialAnswers.addAll(applyAndTestTransformations(problemType, transformationMap, figAMatrix, figBMatrix, figCMatrix, answersMap));
+	    	}*/
+	    	
+	    	if (potentialAnswers.size() == 0 || potentialAnswers.size() > 1) {
+		    	potentialAnswers.addAll(testSubtract(ABtransformMatrix, figCMatrix, answersMap));
+	    	}
     	}
     	
-    	
     	int answer = -1;
-    	if (potentialAnswers.size() >= 1) {
+    	if (potentialAnswers.size() == 1) {
     		answer = Integer.parseInt((String)potentialAnswers.toArray()[0]);
     	} 
     	
@@ -128,11 +170,11 @@ public class Agent {
 	}
 	private String generateTransformation(int[][] a, int[][] b) {
     	int[][] testMatrix ;
-    	
+    	Double matchPctg;
     	/* Identity */
     	if (isIdentical(a,b)) {
-    		Double d = getMatchPctg(a, b);
-    		if (d == 100.0) {
+    		matchPctg = getMatchPctg(a, b);
+    		if (matchPctg == 100.0) {
     			return "identity";
     		} else {
     			return "almost_identity";
@@ -141,6 +183,7 @@ public class Agent {
     	
     	if (isFilled(a,b)) 
     		return "fill";
+    	
     	
     	
     	/*
@@ -211,7 +254,7 @@ public class Agent {
     		test2Matrix = flipRight(test2Matrix);
     		test2Matrix = flipRight(test2Matrix);
     		if (isIdentical(b, test2Matrix)) {
-    			return "reflection";
+    			return "reflection_2";
     		}
     		else {
     			return "clockwise_rotation";
@@ -224,19 +267,40 @@ public class Agent {
         		//System.out.println("a and b matches for anticlockwise rotation");
         		int[][] test3Matrix = flipRight(a);
         		if (isIdentical(b, test3Matrix)) {
-        			return "reflection";
+        			return "reflection_2";
         		}
         		else {
         			return "anticlockwise_rotation";
         		}
         	} else {
 	    		//System.out.println("No transforms found");
-	    		return String.valueOf(getMatchPctg(a,b));
+	    		/*if (isIdentical(a,b)) {
+	    			return "almost_identical";
+	    		} else if (isHalfFilled(a,b)) {
+	        		return "half-fill";
+	    		} else*/
+        		
+	    			return String.valueOf(getMatchPctg(a,b));
         	}
     	}
  	
     }
     
+	private boolean isHalfFilled(int[][] a, int[][] b) {
+		int[][] tmpMatrix = new int[a.length][a[0].length];
+		for (int i=0; i<a.length;i++) {
+			for (int j=0;j<a[i].length;j++) {
+				tmpMatrix[i][j] = b[i][j];
+				if (a[i][j] == 0 && b[i][j] == 1) {
+					tmpMatrix[i][j] = 0;
+				} 
+			}
+		}
+		if (isIdentical(a, tmpMatrix)) {
+			return true;
+		}
+		return false;
+	}
 	private boolean isFilled(int[][] a, int[][] b) {
 		
 		//Checking for fill in b..
@@ -278,7 +342,7 @@ public class Agent {
     		}
     		
     	}
-		System.out.println("Addedfill? "+addedFill);
+		//System.out.println("Addedfill? "+addedFill);
 		return addedFill;
 	}
 	
@@ -363,15 +427,22 @@ public class Agent {
     		int[][] ansMatrix = getBinaryArray(answersMap.get(answer).getVisual());
     		
     		System.out.println("Now checking for :"+answer);
-    		String ADTransform = generateTransformation(figAMatrix, ansMatrix);
-    		String BDTransform = generateTransformation(figBMatrix, ansMatrix);
-    		String CDTransform = generateTransformation(figCMatrix, ansMatrix);
-    		System.out.println("{AD:"+ADTransform+", BD:"+BDTransform+", CD: "+CDTransform+"}");
+    		String aXTransform = generateTransformation(figAMatrix, ansMatrix);
+    		String bXTransform = generateTransformation(figBMatrix, ansMatrix);
+    		String cXTransform = generateTransformation(figCMatrix, ansMatrix);
+    		System.out.println("{aX:"+aXTransform+", bX:"+bXTransform+", cX: "+cXTransform+"}");
     		
     		Map<String,Double> transformResultsMap = new HashMap<String, Double>(); 
-    		transformResultsMap.put("ADTransform", testTransformation(ADTransform, transformationMap.get("BC")));
-    		transformResultsMap.put("BDTransform", testTransformation(BDTransform, transformationMap.get("AC")));
-    		transformResultsMap.put("CDTransform", testTransformation(CDTransform, transformationMap.get("AB")));
+    		
+    		if (type.equals("3x3")) {
+    			transformResultsMap.put("aXTransform", testTransformation(transformationMap.get("AD"), transformationMap.get("DG"), transformationMap.get("BE"), transformationMap.get("EH"), transformationMap.get("CF"), aXTransform));
+        		transformResultsMap.put("bXTransform", testTransformation(transformationMap.get("BC"), transformationMap.get("EF"), bXTransform));
+        		//transformResultsMap.put("cXTransform", testTransformation(cXTransform, transformationMap.get("EG")));
+    		} else {
+    			transformResultsMap.put("aXTransform", testTransformation(aXTransform, transformationMap.get("BC")));
+    			transformResultsMap.put("bXTransform", testTransformation(bXTransform, transformationMap.get("AC")));
+    			transformResultsMap.put("cXTransform", testTransformation(cXTransform, transformationMap.get("AB")));
+    		}
     		
     		testResultsMap.put(answer, transformResultsMap);
     	}
@@ -380,9 +451,37 @@ public class Agent {
 	}
     
     
-    private Set<String> getPotentialAnswers(String type, Map<String,Map<String, Double>> testResultsMap) { 
+    private Double testTransformation(String testTransform1, String testTransform2, String targetTransform) {
+    	Double confidenceLevel1 = 0.0;
+    	Double confidenceLevel2 = 0.0;
+    	
+    	if (isDouble(testTransform1) && isDouble(testTransform2)) {
+    		confidenceLevel1 = (1 - Math.abs(Double.parseDouble(testTransform1) - Double.parseDouble(testTransform2))) * 100;
+    	} else {		
+    		if (testTransform1.equalsIgnoreCase(testTransform2)) {  //Direct match..
+    			confidenceLevel1 = 100.0;
+    		}
+    	}
+    	
+    	if (isDouble(testTransform2) && isDouble(targetTransform)) {
+    		confidenceLevel2 = (1 - Math.abs(Double.parseDouble(testTransform2) - Double.parseDouble(targetTransform))) * 100;
+    	} else {		
+    		if (testTransform2.equalsIgnoreCase(targetTransform)) {  //Direct match..
+    			confidenceLevel2 = 100.0;
+    		}
+    	}
+    	
+    	
+    	return (confidenceLevel1 + confidenceLevel2)/2.0;			//Average..
+	}
+	private Set<String> getPotentialAnswers(String type, Map<String,Map<String, Double>> testResultsMap) { 
     	Set<String> potentialAnswers = new HashSet<String>();
-    	List<String> transforms = new ArrayList<String>() {{ add("ADTransform");  add("BDTransform");  add("CDTransform"); }};
+    	List<String> transforms = new ArrayList<String>();
+    	transforms.add("aXTransform");
+		transforms.add("bXTransform");
+    	if (type.equals("2x2")) {
+    		transforms.add("cXTransform");
+    	}
     	Map<String,Set<String>> potentialAnswerMap = new HashMap<String,Set<String>>();
     	/* For each transform, create a potential answermap */
     	for (String eachTransform : transforms) {
@@ -399,7 +498,7 @@ public class Agent {
     			potentialAnswerMap.put(eachTransform,answer);
     		}
     	}
-    	System.out.println("Potentialanswermap: "+potentialAnswerMap);
+    	//System.out.println("Potentialanswermap: "+potentialAnswerMap);
     	/*Now iterate thru potentialanswermap and vote for # of occurrences*/
     	Map<String, Integer> answerVotesMap = new HashMap<String,Integer>();
     	int count;
@@ -459,10 +558,10 @@ public class Agent {
     	int[][] testMatrix ;
     	testMatrix = flipLeft(a);
     	if (isIdentical(b, testMatrix)) {
-    		System.out.println("a and b matches");
+    		//System.out.println("a and b matches");
     		testMatrix = flipLeft(b);
     		if (isIdentical(c, testMatrix)) {
-    			System.out.println("c and B matches");
+    			//System.out.println("c and B matches");
     			return true;
     		}
     	}
@@ -484,7 +583,18 @@ public class Agent {
         return ret;
     }
 
-
+    private int[][] rotate(int[][] arr) {
+        int width = arr[0].length;
+        int depth = arr.length;
+        int[][] re = new int[width][depth];
+        for (int i = 0; i < depth; i++) {
+            for (int j = 0; j < width; j++) {
+                re[j][depth - i - 1] = arr[i][j];
+            }
+        }
+        return re;
+    }
+    
     public int[][] flipLeft(int[][] matrix)
     {
         int w = matrix.length;
@@ -510,7 +620,7 @@ public class Agent {
     		
 			ansTransformMatrix = matrixSubtract(targetMatrix, ansMatrix);
     		if (isIdentical(transformMatrix, ansTransformMatrix)) {
-    			System.out.println(answer+" Matches.. Potential answer");
+    			//System.out.println(answer+" Matches.. Potential answer");
     			potentialAnswers.add(answer);
     		}
     	}
